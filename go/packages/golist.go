@@ -645,7 +645,11 @@ func invokeGo(cfg *Config, args ...string) (*bytes.Buffer, error) {
 	}
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
-	cmd := exec.CommandContext(cfg.Context, "go", args...)
+	goBin := "go"
+	if len(args) > 0 && args[0] == "list" {
+		goBin = "golist"
+	}
+	cmd := exec.CommandContext(cfg.Context, goBin, args...)
 	// On darwin the cwd gets resolved to the real path, which breaks anything that
 	// expects the working directory to keep the original path, including the
 	// go command when dealing with modules.
