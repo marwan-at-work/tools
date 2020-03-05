@@ -68,6 +68,7 @@ func DefaultOptions() Options {
 			SupportedCommands: []string{
 				"tidy",               // for go.mod files
 				"upgrade.dependency", // for go.mod dependency upgrades
+				"generate",
 			},
 		},
 		UserOptions: UserOptions{

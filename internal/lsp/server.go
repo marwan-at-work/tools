@@ -63,6 +63,12 @@ type Server struct {
 
 	// diagnosticsSema limits the concurrency of diagnostics runs, which can be expensive.
 	diagnosticsSema chan struct{}
+
+	// supportsWorkDoneProgress is set in the initializeRequest
+	// to determine if the client can support progress notifications
+	supportsWorkDoneProgress bool
+	inProgressMu             sync.Mutex
+	inProgress               map[string]func()
 }
 
 // sentDiagnostics is used to cache diagnostics that have been sent for a given file.
@@ -79,11 +85,18 @@ func (s *Server) cancelRequest(ctx context.Context, params *protocol.CancelParam
 }
 
 func (s *Server) codeLens(ctx context.Context, params *protocol.CodeLensParams) ([]protocol.CodeLens, error) {
-	snapshot, fh, ok, err := s.beginFileRequest(params.TextDocument.URI, source.Mod)
+	snapshot, fh, ok, err := s.beginFileRequest(params.TextDocument.URI, source.UnknownKind)
 	if !ok {
 		return nil, err
 	}
-	return mod.CodeLens(ctx, snapshot, fh.Identity().URI)
+	switch fh.Identity().Kind {
+	case source.Mod:
+		return mod.CodeLens(ctx, snapshot, fh.Identity().URI)
+	case source.Go:
+		return source.CodeLens(ctx, snapshot, fh, s.supportsWorkDoneProgress)
+	}
+	// Unsupported file kind for a code action.
+	return nil, nil
 }
 
 func (s *Server) nonstandardRequest(ctx context.Context, method string, params interface{}) (interface{}, error) {

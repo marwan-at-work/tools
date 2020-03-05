@@ -3,7 +3,7 @@ package protocol
 // Package protocol contains data types and code for LSP jsonrpcs
 // generated automatically from vscode-languageserver-node
 // commit: 7b90c29d0cb5cd7b9c41084f6cb3781a955adeba
-// last fetched Wed Feb 12 2020 17:16:47 GMT-0500 (Eastern Standard Time)
+// last fetched Wed Mar 04 2020 10:54:30 GMT-0500 (Eastern Standard Time)
 
 // Code generated (see typescript/README.md) DO NOT EDIT.
 
@@ -21,8 +21,10 @@ type Client interface {
 	LogMessage(context.Context, *LogMessageParams) error
 	Event(context.Context, *interface{}) error
 	PublishDiagnostics(context.Context, *PublishDiagnosticsParams) error
+	Progress(context.Context, *ProgressParams) error
 	WorkspaceFolders(context.Context) ([]WorkspaceFolder /*WorkspaceFolder[] | null*/, error)
 	Configuration(context.Context, *ParamConfiguration) ([]interface{}, error)
+	WorkDoneProgressCreate(context.Context, *WorkDoneProgressCreateParams) error
 	RegisterCapability(context.Context, *RegistrationParams) error
 	UnregisterCapability(context.Context, *UnregistrationParams) error
 	ShowMessageRequest(context.Context, *ShowMessageRequestParams) (*MessageActionItem /*MessageActionItem | null*/, error)
@@ -79,6 +81,16 @@ func (h clientHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, deliver
 			log.Error(ctx, "", err)
 		}
 		return true
+	case "$/progress": // notif
+		var params ProgressParams
+		if err := json.Unmarshal(*r.Params, &params); err != nil {
+			sendParseError(ctx, r, err)
+			return true
+		}
+		if err := h.client.Progress(ctx, &params); err != nil {
+			log.Error(ctx, "", err)
+		}
+		return true
 	case "workspace/workspaceFolders": // req
 		if r.Params != nil {
 			r.Reply(ctx, nil, jsonrpc2.NewErrorf(jsonrpc2.CodeInvalidParams, "Expected no params"))
@@ -97,6 +109,17 @@ func (h clientHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, deliver
 		}
 		resp, err := h.client.Configuration(ctx, &params)
 		if err := r.Reply(ctx, resp, err); err != nil {
+			log.Error(ctx, "", err)
+		}
+		return true
+	case "window/workDoneProgress/create": // req
+		var params WorkDoneProgressCreateParams
+		if err := json.Unmarshal(*r.Params, &params); err != nil {
+			sendParseError(ctx, r, err)
+			return true
+		}
+		err := h.client.WorkDoneProgressCreate(ctx, &params)
+		if err := r.Reply(ctx, nil, err); err != nil {
 			log.Error(ctx, "", err)
 		}
 		return true
@@ -169,6 +192,10 @@ func (s *clientDispatcher) Event(ctx context.Context, params *interface{}) error
 func (s *clientDispatcher) PublishDiagnostics(ctx context.Context, params *PublishDiagnosticsParams) error {
 	return s.Conn.Notify(ctx, "textDocument/publishDiagnostics", params)
 }
+
+func (s *clientDispatcher) Progress(ctx context.Context, params *ProgressParams) error {
+	return s.Conn.Notify(ctx, "$/progress", params)
+}
 func (s *clientDispatcher) WorkspaceFolders(ctx context.Context) ([]WorkspaceFolder /*WorkspaceFolder[] | null*/, error) {
 	var result []WorkspaceFolder /*WorkspaceFolder[] | null*/
 	if err := s.Conn.Call(ctx, "workspace/workspaceFolders", nil, &result); err != nil {
@@ -183,6 +210,10 @@ func (s *clientDispatcher) Configuration(ctx context.Context, params *ParamConfi
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *clientDispatcher) WorkDoneProgressCreate(ctx context.Context, params *WorkDoneProgressCreateParams) error {
+	return s.Conn.Call(ctx, "window/workDoneProgress/create", params, nil) // Call, not Notify
 }
 
 func (s *clientDispatcher) RegisterCapability(ctx context.Context, params *RegistrationParams) error {
