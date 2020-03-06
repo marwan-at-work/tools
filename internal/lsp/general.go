@@ -31,6 +31,11 @@ func (s *Server) initialize(ctx context.Context, params *protocol.ParamInitializ
 	s.state = serverInitializing
 	s.stateMu.Unlock()
 
+	s.inProgressMu.Lock()
+	s.supportsWorkDoneProgress = params.Capabilities.Window.WorkDoneProgress
+	s.inProgress = map[string]func(){}
+	s.inProgressMu.Unlock()
+
 	options := s.session.Options()
 	defer func() { s.session.SetOptions(options) }()
 
