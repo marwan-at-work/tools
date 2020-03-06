@@ -1,3 +1,7 @@
+// Copyright 2020 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package lsp
 
 import (
@@ -12,6 +16,12 @@ import (
 
 func (s *Server) executeCommand(ctx context.Context, params *protocol.ExecuteCommandParams) (interface{}, error) {
 	switch params.Command {
+	case "generate":
+		dir, recursive, err := getGenerateRequest(params.Arguments)
+		if err != nil {
+			return nil, err
+		}
+		go s.runGenerate(dir, recursive)
 	case "tidy":
 		if len(params.Arguments) == 0 || len(params.Arguments) > 1 {
 			return nil, errors.Errorf("expected one file URI for call to `go mod tidy`, got %v", params.Arguments)
@@ -53,4 +63,22 @@ func (s *Server) executeCommand(ctx context.Context, params *protocol.ExecuteCom
 		}
 	}
 	return nil, nil
+}
+
+func getGenerateRequest(args []interface{}) (string, bool, error) {
+	if len(args) != 1 && len(args) != 2 {
+		return "", false, errors.Errorf("expected exactly 1 or 2 arguments but got %d", len(args))
+	}
+	dir, ok := args[0].(string)
+	if !ok {
+		return "", false, errors.Errorf("expected dir to be a string value but got %T", args[0])
+	}
+	var recursive bool
+	if len(args) == 2 {
+		recursive, ok = args[1].(bool)
+		if !ok && len(args) == 2 {
+			return "", false, errors.Errorf("expected recursive to be a boolean but got %T", args[1])
+		}
+	}
+	return dir, recursive, nil
 }
