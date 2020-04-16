@@ -77,6 +77,7 @@ func DefaultOptions() Options {
 				"tidy",               // for go.mod files
 				"upgrade.dependency", // for go.mod dependency upgrades
 				"generate",           // for "go generate" commands
+				"implement",          // for implementing interfaces
 			},
 		},
 		UserOptions: UserOptions{

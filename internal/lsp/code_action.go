@@ -7,9 +7,12 @@ package lsp
 import (
 	"context"
 	"fmt"
+	"go/ast"
+	"go/types"
 	"sort"
 	"strings"
 
+	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/internal/imports"
 	"golang.org/x/tools/internal/lsp/debug/tag"
 	"golang.org/x/tools/internal/lsp/mod"
@@ -136,11 +139,133 @@ func (s *Server) codeAction(ctx context.Context, params *protocol.CodeActionPara
 				},
 			})
 		}
+		for _, diag := range params.Context.Diagnostics {
+			if strings.Contains(diag.Message, "missing method") {
+				phs, err := snapshot.PackageHandles(ctx, fh)
+				if err != nil {
+					return nil, err
+				}
+				// We get the package that source.Diagnostics would've used. This is hack.
+				// TODO(golang/go#32443): The correct solution will be to cache diagnostics per-file per-snapshot.
+				ph, err := source.WidestPackageHandle(phs)
+				if err != nil {
+					return nil, err
+				}
+
+				pkg, err := ph.Cached()
+				if err != nil {
+					return nil, err
+				}
+				pgh, err := pkg.File(uri)
+				if err != nil {
+					return nil, err
+				}
+				f, _, m, _, err := pgh.Cached()
+				if err != nil {
+					return nil, err
+				}
+				spn, err := m.PointSpan(diag.Range.Start)
+				if err != nil {
+					return nil, err
+				}
+				rng, err := spn.Range(m.Converter)
+				if err != nil {
+					return nil, err
+				}
+				fset := s.session.Cache().FileSet()
+				path, _ := astutil.PathEnclosingInterval(f, rng.Start, rng.Start)
+				ir, err := source.GetRequest(path, rng.Start, pkg.GetTypesInfo(), fset)
+				if err != nil {
+					return nil, err
+				}
+				if ir == nil {
+					continue
+				}
+				ir.View = snapshot.View().Name()
+				codeActions = append(codeActions, protocol.CodeAction{
+					Title: fmt.Sprintf("Implement %s.%s", ir.InterfacePath, ir.InterfaceName),
+					Kind:  protocol.QuickFix,
+					Command: &protocol.Command{
+						Title:     "Implement interface",
+						Command:   "implement",
+						Arguments: []interface{}{ir},
+					},
+				})
+				for _, p := range path {
+					if true {
+						continue
+					}
+					rs, ok := p.(*ast.ReturnStmt)
+					if ok && len(rs.Results) > 0 {
+						ident := rs.Results[0].(*ast.UnaryExpr).X.(*ast.CompositeLit).Type.(*ast.SelectorExpr).Sel
+						obj := pkg.GetTypesInfo().Uses[ident]
+						tn := obj.(*types.TypeName)
+						ir.ConcreteName = tn.Name()
+						ir.ConcretePath = tn.Pkg().Path()
+					}
+					ft, ok := p.(*ast.FuncDecl)
+					if ok {
+						sex := ft.Type.Results.List[0].Type.(*ast.SelectorExpr)
+						// iface = sex.Sel.Name
+						// ir.InterfaceName = iface
+						uses := pkg.GetTypesInfo().Uses[sex.Sel].(*types.TypeName)
+						ir.InterfacePath = uses.Pkg().Path()
+					}
+				}
+
+				break // TODO: remove?
+			}
+		}
 	default:
 		// Unsupported file kind for a code action.
 		return nil, nil
 	}
 	return codeActions, nil
+}
+
+type implementRequest struct {
+	InterfacePath string
+	InterfaceName string
+	ConcretePath  string
+	ConcreteName  string
+	View          string
+}
+
+func toIR(args []interface{}) (implementRequest, error) {
+	if len(args) == 0 {
+		return implementRequest{}, fmt.Errorf("missing argument")
+	}
+	mp, ok := args[0].(map[string]interface{})
+	if !ok {
+		return implementRequest{}, fmt.Errorf("expected arg to be map[string]interface{} but got %T", args[0])
+	}
+	ifacePath, ok := mp["InterfacePath"].(string)
+	if !ok {
+		return implementRequest{}, fmt.Errorf("nope")
+	}
+	interfaceName, ok := mp["InterfaceName"].(string)
+	if !ok {
+		return implementRequest{}, fmt.Errorf("nope")
+	}
+	concretePath, ok := mp["ConcretePath"].(string)
+	if !ok {
+		return implementRequest{}, fmt.Errorf("nope")
+	}
+	concreteName, ok := mp["ConcreteName"].(string)
+	if !ok {
+		return implementRequest{}, fmt.Errorf("nope")
+	}
+	view, ok := mp["View"].(string)
+	if !ok {
+		return implementRequest{}, fmt.Errorf("nope")
+	}
+	return implementRequest{
+		InterfacePath: ifacePath,
+		InterfaceName: interfaceName,
+		ConcretePath:  concretePath,
+		ConcreteName:  concreteName,
+		View:          view,
+	}, nil
 }
 
 func (s *Server) getSupportedCodeActions() []protocol.CodeActionKind {

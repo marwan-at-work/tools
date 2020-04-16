@@ -145,7 +145,7 @@ Outer:
 	result := make(map[protocol.Range]bool)
 	// Highlight the correct argument in the function declaration return types.
 	if resultsList != nil && -1 < index && index < len(resultsList.List) {
-		rng, err := nodeToProtocolRange(view, pkg, resultsList.List[index])
+		rng, err := NodeToProtocolRange(view, pkg, resultsList.List[index])
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +181,7 @@ Outer:
 				toAdd = n.Results[index]
 			}
 			if toAdd != nil {
-				rng, err := nodeToProtocolRange(view, pkg, toAdd)
+				rng, err := NodeToProtocolRange(view, pkg, toAdd)
 				if err != nil {
 					event.Error(ctx, "Error getting range for node", err)
 					return false
@@ -230,7 +230,7 @@ Outer:
 		}
 		// Add all branch statements in same scope as the identified one.
 		if n, ok := n.(*ast.BranchStmt); ok {
-			rng, err := nodeToProtocolRange(view, pkg, n)
+			rng, err := NodeToProtocolRange(view, pkg, n)
 			if err != nil {
 				event.Error(ctx, "Error getting range for node", err)
 				return false
@@ -251,7 +251,7 @@ func highlightImportUses(ctx context.Context, view View, pkg Package, path []ast
 
 	ast.Inspect(path[len(path)-1], func(node ast.Node) bool {
 		if imp, ok := node.(*ast.ImportSpec); ok && imp.Path == basicLit {
-			if rng, err := nodeToProtocolRange(view, pkg, node); err == nil {
+			if rng, err := NodeToProtocolRange(view, pkg, node); err == nil {
 				result[rng] = true
 				return false
 			}
@@ -267,7 +267,7 @@ func highlightImportUses(ctx context.Context, view View, pkg Package, path []ast
 		if !strings.Contains(basicLit.Value, obj.Name()) {
 			return true
 		}
-		rng, err := nodeToProtocolRange(view, pkg, n)
+		rng, err := NodeToProtocolRange(view, pkg, n)
 		if err != nil {
 			event.Error(ctx, "Error getting range for node", err)
 			return false
@@ -311,7 +311,7 @@ func highlightIdentifiers(ctx context.Context, view View, pkg Package, path []as
 		if nObj := pkg.GetTypesInfo().ObjectOf(n); nObj != idObj {
 			return false
 		}
-		rng, err := nodeToProtocolRange(view, pkg, n)
+		rng, err := NodeToProtocolRange(view, pkg, n)
 		if err != nil {
 			event.Error(ctx, "Error getting range for node", err)
 			return false
@@ -329,7 +329,7 @@ func highlightImport(view View, pkg Package, obj *types.PkgName, imp *ast.Import
 	if !strings.Contains(imp.Path.Value, obj.Name()) {
 		return nil, nil
 	}
-	rng, err := nodeToProtocolRange(view, pkg, imp.Path)
+	rng, err := NodeToProtocolRange(view, pkg, imp.Path)
 	if err != nil {
 		return nil, err
 	}

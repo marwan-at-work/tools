@@ -169,7 +169,7 @@ func IsGenerated(ctx context.Context, snapshot Snapshot, uri span.URI) bool {
 	return false
 }
 
-func nodeToProtocolRange(view View, pkg Package, n ast.Node) (protocol.Range, error) {
+func NodeToProtocolRange(view View, pkg Package, n ast.Node) (protocol.Range, error) {
 	mrng, err := posToMappedRange(view, pkg, n.Pos(), n.End())
 	if err != nil {
 		return protocol.Range{}, err

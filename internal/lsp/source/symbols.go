@@ -82,11 +82,11 @@ func funcSymbol(view View, pkg Package, decl *ast.FuncDecl, obj types.Object, q 
 		Kind: protocol.Function,
 	}
 	var err error
-	s.Range, err = nodeToProtocolRange(view, pkg, decl)
+	s.Range, err = NodeToProtocolRange(view, pkg, decl)
 	if err != nil {
 		return protocol.DocumentSymbol{}, err
 	}
-	s.SelectionRange, err = nodeToProtocolRange(view, pkg, decl.Name)
+	s.SelectionRange, err = NodeToProtocolRange(view, pkg, decl.Name)
 	if err != nil {
 		return protocol.DocumentSymbol{}, err
 	}
@@ -120,11 +120,11 @@ func typeSymbol(view View, pkg Package, info *types.Info, spec *ast.TypeSpec, ob
 	s.Kind = typeToKind(obj.Type())
 
 	var err error
-	s.Range, err = nodeToProtocolRange(view, pkg, spec)
+	s.Range, err = NodeToProtocolRange(view, pkg, spec)
 	if err != nil {
 		return protocol.DocumentSymbol{}, err
 	}
-	s.SelectionRange, err = nodeToProtocolRange(view, pkg, spec.Name)
+	s.SelectionRange, err = NodeToProtocolRange(view, pkg, spec.Name)
 	if err != nil {
 		return protocol.DocumentSymbol{}, err
 	}
@@ -140,10 +140,10 @@ func typeSymbol(view View, pkg Package, info *types.Info, spec *ast.TypeSpec, ob
 			child.Detail, _ = formatType(f.Type(), q)
 
 			spanNode, selectionNode := nodesForStructField(i, st)
-			if span, err := nodeToProtocolRange(view, pkg, spanNode); err == nil {
+			if span, err := NodeToProtocolRange(view, pkg, spanNode); err == nil {
 				child.Range = span
 			}
-			if span, err := nodeToProtocolRange(view, pkg, selectionNode); err == nil {
+			if span, err := NodeToProtocolRange(view, pkg, selectionNode); err == nil {
 				child.SelectionRange = span
 			}
 			s.Children = append(s.Children, child)
@@ -170,11 +170,11 @@ func typeSymbol(view View, pkg Package, info *types.Info, spec *ast.TypeSpec, ob
 					}
 				}
 			}
-			child.Range, err = nodeToProtocolRange(view, pkg, spanNode)
+			child.Range, err = NodeToProtocolRange(view, pkg, spanNode)
 			if err != nil {
 				return protocol.DocumentSymbol{}, err
 			}
-			child.SelectionRange, err = nodeToProtocolRange(view, pkg, selectionNode)
+			child.SelectionRange, err = NodeToProtocolRange(view, pkg, selectionNode)
 			if err != nil {
 				return protocol.DocumentSymbol{}, err
 			}
@@ -204,11 +204,11 @@ func typeSymbol(view View, pkg Package, info *types.Info, spec *ast.TypeSpec, ob
 					break Embeddeds
 				}
 			}
-			child.Range, err = nodeToProtocolRange(view, pkg, spanNode)
+			child.Range, err = NodeToProtocolRange(view, pkg, spanNode)
 			if err != nil {
 				return protocol.DocumentSymbol{}, err
 			}
-			child.SelectionRange, err = nodeToProtocolRange(view, pkg, selectionNode)
+			child.SelectionRange, err = NodeToProtocolRange(view, pkg, selectionNode)
 			if err != nil {
 				return protocol.DocumentSymbol{}, err
 			}
@@ -247,11 +247,11 @@ func varSymbol(view View, pkg Package, decl ast.Node, name *ast.Ident, obj types
 		s.Kind = protocol.Constant
 	}
 	var err error
-	s.Range, err = nodeToProtocolRange(view, pkg, decl)
+	s.Range, err = NodeToProtocolRange(view, pkg, decl)
 	if err != nil {
 		return protocol.DocumentSymbol{}, err
 	}
-	s.SelectionRange, err = nodeToProtocolRange(view, pkg, name)
+	s.SelectionRange, err = NodeToProtocolRange(view, pkg, name)
 	if err != nil {
 		return protocol.DocumentSymbol{}, err
 	}
