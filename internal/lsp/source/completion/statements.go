@@ -179,7 +179,7 @@ func (c *completer) addErrCheckAndReturn() {
 
 	var (
 		errorType = types.Universe.Lookup("error").Type()
-		result    = c.enclosingFunc.sig.Results()
+		result    = c.enclosingFunc.Sig.Results()
 	)
 	// Make sure our enclosing function returns an error.
 	if result.Len() == 0 || !types.Identical(result.At(result.Len()-1).Type(), errorType) {

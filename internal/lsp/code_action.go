@@ -77,6 +77,11 @@ func (s *Server) codeAction(ctx context.Context, params *protocol.CodeActionPara
 			return nil, nil
 		}
 		diagnostics := params.Context.Diagnostics
+		implActions, err := source.MethodStubActions(ctx, diagnostics, snapshot, fh)
+		if err != nil {
+			return nil, fmt.Errorf("implActions: %w", err)
+		}
+		codeActions = append(codeActions, implActions...)
 
 		// First, process any missing imports and pair them with the
 		// diagnostics they fix.

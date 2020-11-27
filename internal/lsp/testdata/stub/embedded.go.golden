@@ -1,0 +1,43 @@
+-- suggestedfix_embedded_8_27 --
+package stub
+
+import (
+	"context"
+	"io"
+	"time"
+)
+
+var _ embeddedInterface = (*embeddedConcrete)(nil) //@suggestedfix("(", "quickfix")
+
+type embeddedConcrete struct{}
+
+// Deadline implements embeddedInterface
+func (*embeddedConcrete) Deadline() (deadline time.Time, ok bool) {
+	panic("unimplemented")
+}
+
+// Done implements embeddedInterface
+func (*embeddedConcrete) Done() <-chan struct{} {
+	panic("unimplemented")
+}
+
+// Err implements embeddedInterface
+func (*embeddedConcrete) Err() error {
+	panic("unimplemented")
+}
+
+// Value implements embeddedInterface
+func (*embeddedConcrete) Value(key interface{}) interface{} {
+	panic("unimplemented")
+}
+
+// Read implements embeddedInterface
+func (*embeddedConcrete) Read(p []byte) (n int, err error) {
+	panic("unimplemented")
+}
+
+type embeddedInterface interface {
+	io.Reader
+	context.Context
+}
+

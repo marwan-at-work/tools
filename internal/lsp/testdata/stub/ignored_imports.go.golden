@@ -1,0 +1,41 @@
+-- suggestedfix_ignored_imports_15_22 --
+package stub
+
+import (
+	"context"
+	"time"
+	. "time"
+	_ "time"
+)
+
+// This file tests that dot-imports and underscore imports
+// are properly ignored and that a new import is added to
+// refernece method types
+
+var (
+	_                 = Time{}
+	_ context.Context = (*ignoredContext)(nil) //@suggestedfix("(", "quickfix")
+)
+
+type ignoredContext struct{}
+
+// Deadline implements context.Context
+func (*ignoredContext) Deadline() (deadline time.Time, ok bool) {
+	panic("unimplemented")
+}
+
+// Done implements context.Context
+func (*ignoredContext) Done() <-chan struct{} {
+	panic("unimplemented")
+}
+
+// Err implements context.Context
+func (*ignoredContext) Err() error {
+	panic("unimplemented")
+}
+
+// Value implements context.Context
+func (*ignoredContext) Value(key interface{}) interface{} {
+	panic("unimplemented")
+}
+
