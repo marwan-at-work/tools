@@ -194,7 +194,7 @@ type completer struct {
 
 	// enclosingFunc contains information about the function enclosing
 	// the position.
-	enclosingFunc *funcInfo
+	enclosingFunc *source.FuncInfo
 
 	// enclosingCompositeLiteral contains information about the composite literal
 	// enclosing the position.
@@ -217,15 +217,6 @@ type completer struct {
 	// startTime is when we started processing this completion request. It does
 	// not include any time the request spent in the queue.
 	startTime time.Time
-}
-
-// funcInfo holds info about a function object.
-type funcInfo struct {
-	// sig is the function declaration enclosing the position.
-	sig *types.Signature
-
-	// body is the function's body.
-	body *ast.BlockStmt
 }
 
 type compLitInfo struct {
@@ -506,7 +497,7 @@ func Completion(ctx context.Context, snapshot source.Snapshot, fh source.FileHan
 		path:                      path,
 		pos:                       pos,
 		seen:                      make(map[types.Object]bool),
-		enclosingFunc:             enclosingFunction(path, pkg.GetTypesInfo()),
+		enclosingFunc:             source.EnclosingFunction(path, pkg.GetTypesInfo()),
 		enclosingCompositeLiteral: enclosingCompositeLiteral(path, rng.Start, pkg.GetTypesInfo()),
 		deepState: deepCompletionState{
 			enabled: opts.DeepCompletion,
@@ -1646,30 +1637,6 @@ func enclosingCompositeLiteral(path []ast.Node, pos token.Pos, info *types.Info)
 	return nil
 }
 
-// enclosingFunction returns the signature and body of the function
-// enclosing the given position.
-func enclosingFunction(path []ast.Node, info *types.Info) *funcInfo {
-	for _, node := range path {
-		switch t := node.(type) {
-		case *ast.FuncDecl:
-			if obj, ok := info.Defs[t.Name]; ok {
-				return &funcInfo{
-					sig:  obj.Type().(*types.Signature),
-					body: t.Body,
-				}
-			}
-		case *ast.FuncLit:
-			if typ, ok := info.Types[t]; ok {
-				return &funcInfo{
-					sig:  typ.Type.(*types.Signature),
-					body: t.Body,
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (c *completer) expectedCompositeLiteralType() types.Type {
 	clInfo := c.enclosingCompositeLiteral
 	switch t := clInfo.clType.(type) {
@@ -1989,7 +1956,7 @@ Nodes:
 			}
 		case *ast.ReturnStmt:
 			if c.enclosingFunc != nil {
-				sig := c.enclosingFunc.sig
+				sig := c.enclosingFunc.Sig
 				// Find signature result that corresponds to our return statement.
 				if resultIdx := exprAtPos(c.pos, node.Results); resultIdx < len(node.Results) {
 					if resultIdx < sig.Results().Len() {

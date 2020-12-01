@@ -1,0 +1,33 @@
+-- suggestedfix_renamed_import_8_25 --
+package stub
+
+import (
+	"context"
+	mytime "time"
+)
+
+var _ context.Context = &myContext{} //@suggestedfix("&", "quickfix")
+var _ = mytime.Time{}
+
+type myContext struct{}
+
+// Deadline implements context.Context
+func (*myContext) Deadline() (deadline mytime.Time, ok bool) {
+	panic("unimplemented")
+}
+
+// Done implements context.Context
+func (*myContext) Done() <-chan struct{} {
+	panic("unimplemented")
+}
+
+// Err implements context.Context
+func (*myContext) Err() error {
+	panic("unimplemented")
+}
+
+// Value implements context.Context
+func (*myContext) Value(key interface{}) interface{} {
+	panic("unimplemented")
+}
+

@@ -530,3 +530,36 @@ func inDirLex(dir, path string) bool {
 		return false
 	}
 }
+
+// FuncInfo holds info about a function object.
+type FuncInfo struct {
+	// Sig is the function declaration enclosing the position.
+	Sig *types.Signature
+
+	// Body is the function's Body.
+	Body *ast.BlockStmt
+}
+
+// EnclosingFunction returns the signature and body of the function
+// enclosing the given position.
+func EnclosingFunction(path []ast.Node, info *types.Info) *FuncInfo {
+	for _, node := range path {
+		switch t := node.(type) {
+		case *ast.FuncDecl:
+			if obj, ok := info.Defs[t.Name]; ok {
+				return &FuncInfo{
+					Sig:  obj.Type().(*types.Signature),
+					Body: t.Body,
+				}
+			}
+		case *ast.FuncLit:
+			if typ, ok := info.Types[t]; ok {
+				return &FuncInfo{
+					Sig:  typ.Type.(*types.Signature),
+					Body: t.Body,
+				}
+			}
+		}
+	}
+	return nil
+}

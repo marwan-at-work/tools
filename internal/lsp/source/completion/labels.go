@@ -87,7 +87,7 @@ func (c *completer) labels(lt labelType) {
 		// Goto accepts any label in the same function not in a nested
 		// block. It also doesn't take labels that would jump across
 		// variable definitions, but ignore that case for now.
-		ast.Inspect(c.enclosingFunc.body, func(n ast.Node) bool {
+		ast.Inspect(c.enclosingFunc.Body, func(n ast.Node) bool {
 			if n == nil {
 				return false
 			}
