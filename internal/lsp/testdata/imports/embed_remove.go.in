@@ -1,0 +1,11 @@
+package imports //@import("package")
+
+import (
+	"fmt"
+)
+
+var file string
+
+func _() {
+	fmt.Println(file)
+}

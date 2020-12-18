@@ -506,6 +506,10 @@ func (v *View) Snapshot(ctx context.Context) (source.Snapshot, func()) {
 	return v.getSnapshot(ctx)
 }
 
+func (v *View) GoVersion() int {
+	return v.goversion
+}
+
 func (v *View) getSnapshot(ctx context.Context) (*snapshot, func()) {
 	v.snapshotMu.Lock()
 	defer v.snapshotMu.Unlock()

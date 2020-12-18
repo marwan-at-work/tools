@@ -1,0 +1,15 @@
+-- goimports --
+package imports //@import("package")
+
+import (
+	_ "embed"
+	"fmt"
+)
+
+//go:embed embed_add_ignored.go.in
+var file string
+
+func _() {
+	fmt.Println(file)
+}
+

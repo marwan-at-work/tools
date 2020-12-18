@@ -1,0 +1,14 @@
+package imports //@import("package")
+
+import (
+	"embed"
+	_ "embed"
+	"fmt"
+)
+
+//go:embed embed_add.go.in
+var file embed.FS
+
+func _() {
+	fmt.Println(file)
+}
