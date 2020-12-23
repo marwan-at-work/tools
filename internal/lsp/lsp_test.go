@@ -1122,6 +1122,51 @@ func (r *runner) Link(t *testing.T, uri span.URI, wantLinks []tests.Link) {
 	}
 }
 
+func (r *runner) AddImport(t *testing.T, uri span.URI, expectedImport string) {
+	resp, err := r.server.nonstandardRequest(r.ctx, "gopls/knownPackages", map[string]interface{}{
+		"textDocument": map[string]interface{}{
+			"uri": string(uri),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgs, _ := resp.([]string)
+	var hasPkg bool
+	for _, p := range pkgs {
+		if p == expectedImport {
+			hasPkg = true
+			break
+		}
+	}
+	if !hasPkg {
+		t.Fatalf("expected %q to be in list of knownPackages of length %d", expectedImport, len(pkgs))
+	}
+	edits, err := r.server.addImport(r.ctx, map[string]interface{}{
+		"textDocument": map[string]interface{}{
+			"uri": string(uri),
+		},
+		"importPath": expectedImport,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := applyTextDocumentEdits(r, edits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := res[uri]
+	got := r.data.Golden("addimport", uri.Filename(), func() ([]byte, error) {
+		return []byte(want), nil
+	})
+	if got == nil {
+		t.Fatalf("golden file %q not found", uri.Filename())
+	}
+	if diff := tests.Diff(t, want, string(got)); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestBytesOffset(t *testing.T) {
 	tests := []struct {
 		text string

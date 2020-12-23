@@ -115,8 +115,9 @@ func (s *Server) workDoneProgressCancel(ctx context.Context, params *protocol.Wo
 }
 
 func (s *Server) nonstandardRequest(ctx context.Context, method string, params interface{}) (interface{}, error) {
-	paramMap := params.(map[string]interface{})
-	if method == "gopls/diagnoseFiles" {
+	switch method {
+	case "gopls/diagnoseFiles":
+		paramMap := params.(map[string]interface{})
 		for _, file := range paramMap["files"].([]interface{}) {
 			snapshot, fh, ok, release, err := s.beginFileRequest(ctx, protocol.DocumentURI(file.(string)), source.UnknownKind)
 			defer release()
@@ -142,8 +143,83 @@ func (s *Server) nonstandardRequest(ctx context.Context, method string, params i
 			return nil, err
 		}
 		return struct{}{}, nil
+	case "gopls/knownPackages":
+		uri, err := knownPackagesRequest(params)
+		if err != nil {
+			return nil, err
+		}
+		snapshot, fh, ok, release, err := s.beginFileRequest(ctx, protocol.DocumentURI(uri), source.UnknownKind)
+		defer release()
+		if !ok {
+			return nil, err
+		}
+		return source.KnownPackages(ctx, snapshot, fh)
+	case "gopls/addImport":
+		edits, err := s.addImport(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		_, err = s.client.ApplyEdit(ctx, &protocol.ApplyWorkspaceEditParams{
+			Edit: protocol.WorkspaceEdit{
+				DocumentChanges: edits,
+			},
+		})
+		return nil, err
 	}
 	return nil, notImplemented(method)
+}
+
+func (s *Server) addImport(ctx context.Context, params interface{}) ([]protocol.TextDocumentEdit, error) {
+	importPath, uri, err := addImportRequest(params)
+	if err != nil {
+		return nil, err
+	}
+	snapshot, fh, ok, release, err := s.beginFileRequest(ctx, protocol.DocumentURI(uri), source.UnknownKind)
+	defer release()
+	if !ok {
+		return nil, err
+	}
+	edits, err := source.AddImport(ctx, snapshot, fh, importPath)
+	if err != nil {
+		return nil, err
+	}
+	return documentChanges(fh, edits), nil
+}
+
+func addImportRequest(params interface{}) (importPath string, uri string, err error) {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return "", "", fmt.Errorf("invalid gopls/addImport request type: %T", params)
+	}
+	td, ok := paramMap["textDocument"].(map[string]interface{})
+	if !ok {
+		return "", "", fmt.Errorf("invalid gopls/addImport textDocument type: %T", params)
+	}
+	uri, ok = td["uri"].(string)
+	if !ok || uri == "" {
+		return "", "", fmt.Errorf("gopls/addImport uri must be a string")
+	}
+	importPath, ok = paramMap["importPath"].(string)
+	if !ok || importPath == "" {
+		return "", "", fmt.Errorf("gopls/addImport importPath must be a string")
+	}
+	return importPath, uri, nil
+}
+
+func knownPackagesRequest(params interface{}) (string, error) {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid gopls/golist request type: %T", params)
+	}
+	td, ok := paramMap["textDocument"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid gopls/golist textDocument type: %T", params)
+	}
+	uri, ok := td["uri"].(string)
+	if !ok || uri == "" {
+		return "", fmt.Errorf("gopls/golist uri must be a string")
+	}
+	return uri, nil
 }
 
 func notImplemented(method string) error {
