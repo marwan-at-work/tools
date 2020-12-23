@@ -114,6 +114,14 @@ func computeImportEdits(snapshot Snapshot, pgf *ParsedGoFile, options *imports.O
 		return nil, nil, err
 	}
 
+	if snapshot.View().GoVersion() >= 16 {
+		if missingEmbedImport(pgf.File, allFixes) {
+			allFixes = append(allFixes, embedFix(imports.AddImport))
+		} else if shouldRemoveEmbedImport(pgf.File, allFixes) {
+			allFixes = append(allFixes, embedFix(imports.DeleteImport))
+		}
+	}
+
 	allFixEdits, err = computeFixEdits(snapshot, pgf, options, allFixes)
 	if err != nil {
 		return nil, nil, err
@@ -132,6 +140,76 @@ func computeImportEdits(snapshot Snapshot, pgf *ParsedGoFile, options *imports.O
 		})
 	}
 	return allFixEdits, editsPerFix, nil
+}
+
+func shouldRemoveEmbedImport(f *ast.File, allFixes []*imports.ImportFix) bool {
+	var (
+		hasIgnoredImport bool
+		hasImport        bool
+	)
+	for _, imp := range f.Imports {
+		if imp.Path.Value == `"embed"` && imp.Name != nil && imp.Name.Name == "_" {
+			hasIgnoredImport = true
+			continue
+		}
+		if imp.Path.Value == `"embed"` && (imp.Name == nil || imp.Name.Name != "_") {
+			hasImport = true
+		}
+	}
+	// if there's no `import _ "embed"`, there's nothing to remove
+	if !hasIgnoredImport {
+		return false
+	}
+	for _, fix := range allFixes {
+		if fix.StmtInfo.ImportPath == "embed" && fix.FixType != imports.DeleteImport {
+			hasImport = true
+		}
+	}
+	// if there's an `import "embed"` as well as `import _ "embed"`,
+	// then we know we can always remove the _ import.
+	if hasImport {
+		return true
+	}
+	for _, c := range f.Comments {
+		for _, l := range c.List {
+			if strings.HasPrefix(l.Text, "//go:embed") {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func missingEmbedImport(f *ast.File, allFixes []*imports.ImportFix) bool {
+	for _, comm := range f.Comments {
+		for _, l := range comm.List {
+			if strings.HasPrefix(l.Text, "//go:embed") {
+				for _, imp := range f.Imports {
+					if imp.Path.Value == `"embed"` {
+						return false
+					}
+				}
+				for _, fix := range allFixes {
+					if fix.StmtInfo.ImportPath == "embed" {
+						return false
+					}
+				}
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func embedFix(importType imports.ImportFixType) *imports.ImportFix {
+	return &imports.ImportFix{
+		StmtInfo: imports.ImportInfo{
+			ImportPath: "embed",
+			Name:       "_",
+		},
+		IdentName: "_",
+		FixType:   importType,
+	}
 }
 
 // ComputeOneImportFixEdits returns text edits for a single import fix.

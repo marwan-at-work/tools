@@ -233,6 +233,9 @@ type View interface {
 	// IsGoPrivatePath reports whether target is a private import path, as identified
 	// by the GOPRIVATE environment variable.
 	IsGoPrivatePath(path string) bool
+
+	// GoVersion returns the Go minor version of this view
+	GoVersion() int
 }
 
 // A FileSource maps uris to FileHandles. This abstraction exists both for
